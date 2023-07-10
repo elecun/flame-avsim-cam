@@ -1,0 +1,6 @@
+tk
+pillow
+tkdesigner
+pywebview
+nest-asyncio
+pygubu
