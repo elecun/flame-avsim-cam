@@ -1,68 +1,128 @@
-
 '''
-FLAME AVSIM CAMERA Monitor & Controller
+ In-Cabin Camera Monitoring and Recorder (with Qt6)
+ @author Byunghun Hwang<bh.hwang@iae.re.kr>
 '''
 
+import sys
+import typing
+from PyQt6 import QtGui
+import cv2
 import pathlib
-import tkinter as tk
-import tkinter.ttk as ttl
 import json
-import pygubu
-from uvc_camera import camera
-
-PROJECT_PATH = pathlib.Path(__file__).parent
-PROJECT_UI = PROJECT_PATH / "gui.ui"
-
-
-class app_camera_monitor:
-    def __init__(self, master=None) -> None:
-        self.builder = pygubu.Builder()
-        self.builder.add_resource_path(PROJECT_PATH)
-        self.master = master
-
-        #devices
-        self.camera0 = None
-        self.camera1 = None
-        self.camera2 = None
-        self.camera3 = None
-        self.camera4 = None
-        self.camera5 = None
-
-        self.builder.add_from_file(PROJECT_UI)
-        self.mainwindow = self.builder.get_object('flame_ui_root', master)
-        self.camera0_monitor = self.builder.get_object('camera1_canvas', master)
-        self.builder.connect_callbacks(self)
+from PyQt6.QtGui import QImage, QPixmap, QCloseEvent
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton
+from PyQt6.uic import loadUi
+from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal
+import timeit
 
 
-    def __del__(self) -> None:
-        print("close all devices")
-        if self.camera0 != None:
-            self.camera0.close()
+WORKING_PATH = pathlib.Path(__file__).parent
+APP_UI = WORKING_PATH / "MainWindow.ui"
 
-        self.mainwindow.quit()
+camera_ids = [0, 2, 4, 6]
+camera_windows = {camera_ids[0]:"window_camera_1", 
+                  camera_ids[1]:"window_camera_2", 
+                  camera_ids[2]:"window_camera_3", 
+                  camera_ids[3]:"window_camera_4"}
+btn_camera_open = {camera_ids[0]:"btn_camera_open_1", 
+                  camera_ids[1]:"btn_camera_open_2", 
+                  camera_ids[2]:"btn_camera_open_3", 
+                  camera_ids[3]:"btn_camera_open_4"}
+
+'''
+camera module with thread
+'''
+class CameraModule(QThread):
+    image_frame = pyqtSignal(QImage)
+
+    def __init__(self, camera_id):
+        super().__init__()
+        self.camera_id = camera_id
+        self.working = False
+
+    def open(self) -> bool:
+        self.dev = cv2.VideoCapture(self.camera_id)
+        if not self.dev.isOpened():
+            print("cannot connect camera device {}".format(self.camera_id))
+            return False
+        self.working = True
+        print("connected camera device {}".format(self.camera_id))
+        return True
 
     def run(self):
-        self.mainwindow.mainloop()
+        while True:
+            start_t = timeit.default_timer()
+            ret, frame = self.dev.read()
+            if not ret:
+                self.working = False
+                self.dev.release()
+                break
+            
+            #change image to QImage
+            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    def camera1_connect(self):
-        if self.camera0 == None:
-            btn_camera_connect_label = self.builder.get_object('btn_camera1_connect', self.master)
-            print("camera 1 opening..")
-            self.mainwindow.wm_attributes("-alpha", True)
-            self.camera0 = camera(0, tk_canvas=self.camera0_monitor)
+            # post processing
+            end_t = timeit.default_timer()
+            FPS = int(1./(end_t - start_t ))
+            cv2.putText(rgb_image, "Camera {}".format(self.camera_id), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0), 2, cv2.LINE_AA)
 
-    def camera2_connect(self):
-        print("camera 2 connect ")
-    def camera3_connect(self):
-        print("camera 3 connect ")
-    def camera4_connect(self):
-        print("camera 4 connect ")
-    def camera5_connect(self):
-        print("camera 5 connect ")
-    def camera6_connect(self):
-        print("camera 6 connect ")
+            h, w, ch = rgb_image.shape
+            bytes_per_line = ch * w
+            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+
+            self.image_frame.emit(qt_image)
+
+    def close(self):
+        if self.dev:
+            self.terminate()
+            self.dev.release()
+
+'''
+Main window
+'''
+class CameraMonitor(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        loadUi(APP_UI, self)
+
+        self.device_modules = []
+
+        # for manual load
+        for id in camera_ids:
+            camera = CameraModule(id)
+            if camera.open():
+                self.device_modules.append(camera)
+
+            btn = self.findChild(QPushButton, btn_camera_open[id])
+            btn.clicked.connect(lambda: self.camera_open_click(id))
+
+        # for auto load
+        # for id in camera_ids:
+        #     camera = CameraModule(id)
+        #     if camera.open():
+        #         camera.image_frame.connect(self.update_frame)
+        #         camera.start()
+        #         self.device_modules.append(camera)
+
+    def camera_open_click(self, id):
+        print("")
+
+    def update_frame(self, image):
+
+        id = self.sender().camera_id
+        pixmap = QPixmap.fromImage(image)
+        window = self.findChild(QLabel, camera_windows[id])
+        window.setPixmap(pixmap.scaled(window.size(), Qt.AspectRatioMode.KeepAspectRatio))
+
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        for device in self.device_modules:
+            device.close()
+
+        return super().closeEvent(a0)
 
 
-if __name__ == '__main__':
-    app = app_camera_monitor()
-    app.run()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = CameraMonitor()
+    window.show()
+    sys.exit(app.exec())
