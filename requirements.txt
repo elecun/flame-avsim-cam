@@ -1,6 +1,3 @@
-tk
-pillow
-tkdesigner
-pywebview
-nest-asyncio
-pygubu
+pyqt6
+PySide6
+opencv-python

@@ -10,7 +10,7 @@ import cv2
 import pathlib
 import json
 from PyQt6.QtGui import QImage, QPixmap, QCloseEvent
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal
 import timeit
@@ -43,14 +43,17 @@ class CameraModule(QThread):
     def open(self) -> bool:
         self.dev = cv2.VideoCapture(self.camera_id)
         if not self.dev.isOpened():
-            print("cannot connect camera device {}".format(self.camera_id))
+            # print("cannot connect camera device {}".format(self.camera_id))
             return False
         self.working = True
-        print("connected camera device {}".format(self.camera_id))
+        print("connected camera device : {}".format(self.camera_id))
         return True
 
     def run(self):
         while True:
+            if self.isInterruptionRequested():
+                break
+            
             start_t = timeit.default_timer()
             ret, frame = self.dev.read()
             if not ret:
@@ -64,7 +67,7 @@ class CameraModule(QThread):
             # post processing
             end_t = timeit.default_timer()
             FPS = int(1./(end_t - start_t ))
-            cv2.putText(rgb_image, "Camera {}".format(self.camera_id), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0), 2, cv2.LINE_AA)
+            cv2.putText(rgb_image, "Camera #{}({})".format(self.camera_id, FPS), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
 
             h, w, ch = rgb_image.shape
             bytes_per_line = ch * w
@@ -74,8 +77,17 @@ class CameraModule(QThread):
 
     def close(self):
         if self.dev:
-            self.terminate()
+            self.requestInterruption()
             self.dev.release()
+    
+    def begin(self):
+        if self.dev.isOpened():
+            print("start camera thread", self.camera_id)
+            self.start()
+            
+    def __str__(self):
+        return str(self.camera_id)
+            
 
 '''
 Main window
@@ -85,27 +97,20 @@ class CameraMonitor(QMainWindow):
         super().__init__()
         loadUi(APP_UI, self)
 
-        self.device_modules = []
+        self.device_modules = {}
 
         # for manual load
         for id in camera_ids:
             camera = CameraModule(id)
             if camera.open():
-                self.device_modules.append(camera)
-
-            btn = self.findChild(QPushButton, btn_camera_open[id])
-            btn.clicked.connect(lambda: self.camera_open_click(id))
-
-        # for auto load
-        # for id in camera_ids:
-        #     camera = CameraModule(id)
-        #     if camera.open():
-        #         camera.image_frame.connect(self.update_frame)
-        #         camera.start()
-        #         self.device_modules.append(camera)
-
-    def camera_open_click(self, id):
-        print("")
+                self.device_modules[id] = camera
+                self.device_modules[id].image_frame.connect(self.update_frame)
+                btn = self.findChild(QPushButton, btn_camera_open[id])
+                btn.clicked.connect(self.device_modules[id].begin)
+            else:
+                btn = self.findChild(QPushButton, btn_camera_open[id])
+                btn.clicked.connect(lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection"))
+    
 
     def update_frame(self, image):
 
@@ -115,7 +120,8 @@ class CameraMonitor(QMainWindow):
         window.setPixmap(pixmap.scaled(window.size(), Qt.AspectRatioMode.KeepAspectRatio))
 
     def closeEvent(self, a0: QCloseEvent) -> None:
-        for device in self.device_modules:
+        for device in self.device_modules.values():
+            print("close ", device)
             device.close()
 
         return super().closeEvent(a0)
