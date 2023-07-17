@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QMes
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal
 import timeit
+import paho.mqtt.client as mqtt
 
 
 WORKING_PATH = pathlib.Path(__file__).parent
@@ -28,6 +29,7 @@ btn_camera_open = {camera_ids[0]:"btn_camera_open_1",
                   camera_ids[1]:"btn_camera_open_2", 
                   camera_ids[2]:"btn_camera_open_3", 
                   camera_ids[3]:"btn_camera_open_4"}
+mqtt_topic_manager = "flame/avsim/manager"
 
 '''
 camera module with thread
@@ -98,6 +100,14 @@ class CameraMonitor(QMainWindow):
         loadUi(APP_UI, self)
 
         self.device_modules = {}
+        
+        self.mq_client = mqtt.Client(client_id="flame-avsim-cam",transport='tcp',protocol=mqtt.MQTTv311, clean_session=True)
+        self.mq_client.on_connect = self.on_mqtt_connect
+        self.mq_client.on_message = self.on_mqtt_message
+        self.mq_client.connect_async("127.0.0.1",port=1883,keepalive=60)
+        self.mq_client.loop_start()
+        
+        print("start mqtt")
 
         # for manual load
         for id in camera_ids:
@@ -125,9 +135,27 @@ class CameraMonitor(QMainWindow):
             device.close()
 
         return super().closeEvent(a0)
-
+    
+    # MQTT sub functions
+    def mqtt_startup_notify(self):
+        if self.mq_client.is_connected():
+            msg = {"app":"flame-avsim-cam", "active":True}
+            self.mq_client.publish(mqtt_topic_manager, json.dumps(msg), 0)
+    
+    # MQTT callbacks
+    def on_mqtt_connect(self, mqttc, obj, flags, rc):
+        self.mqtt_startup_notify()
+        self.mq_client.subscribe("flame/avsim/status", 0)
+        print("rc: "+str(rc))
+        
+    def on_mqtt_message(self, mqttc, userdata, msg):
+        print(" Received message " + str(msg.payload)+ " on topic '" + msg.topic+ "' with QoS " + str(msg.qos))
+    
+        
+        
 
 if __name__ == "__main__":
+    
     app = QApplication(sys.argv)
     window = CameraMonitor()
     window.show()
