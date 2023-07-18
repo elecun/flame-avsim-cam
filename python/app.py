@@ -3,7 +3,7 @@
  @author Byunghun Hwang<bh.hwang@iae.re.kr>
 '''
 
-import sys
+import sys, os
 import typing
 from PyQt6 import QtGui
 import cv2
@@ -16,10 +16,12 @@ from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal
 import timeit
 import paho.mqtt.client as mqtt
 from datetime import datetime
+import csv
 
 
 WORKING_PATH = pathlib.Path(__file__).parent
 APP_UI = WORKING_PATH / "MainWindow.ui"
+VIDEO_OUT_DIR = WORKING_PATH / "video"
 
 camera_ids = [0, 2, 4, 6]
 camera_windows = {camera_ids[0]:"window_camera_1", 
@@ -46,6 +48,7 @@ class CameraModule(QThread):
         self.camera_id = camera_id
         self.working = False # grabing image
         self.record_start = False # recording video
+        self.video_out_path = VIDEO_OUT_DIR
 
     def open(self) -> bool:
         self.dev = cv2.VideoCapture(self.camera_id)
@@ -110,15 +113,18 @@ class CameraModule(QThread):
     def start_recording(self):
         if not self.record_start:
             self.record_start_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            
+            # create path
+            self.video_out_path = VIDEO_OUT_DIR / self.record_start_datetime
+            self.video_out_path.mkdir(parents=True, exist_ok=True)
+                
             self.camera_fps = self.dev.get(cv2.CAP_PROP_FPS)
             self.camera_w = int(self.dev.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.camera_h = int(self.dev.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            print(self.dev.get(cv2.CAP_PROP_FOURCC))
+
             print("recording camera({}) info : ({},{}@{})".format(self.camera_id, self.camera_w, self.camera_h, self.camera_fps))
-            self.video_out = cv2.VideoWriter('./video/{}_cam_{}.mp4'.format(self.record_start_datetime, self.camera_id), self.fourcc, _def_record_fps, (self.camera_w, self.camera_h))
+            self.video_out = cv2.VideoWriter(str(self.video_out_path/'cam_{}.mp4'.format(self.camera_id)), self.fourcc, _def_record_fps, (self.camera_w, self.camera_h))
             self.record_start = True
-        else:
-            print("Already recording...")
     
     def begin(self):
         if self.dev.isOpened():
@@ -216,10 +222,6 @@ class CameraMonitor(QMainWindow):
     def on_mqtt_message(self, mqttc, userdata, msg):
         if msg.topic in self.sub_api.keys():
             self.sub_api[msg.topic]()
-        
-        # print(" Received message " + str(msg.payload)+ " on topic '" + msg.topic+ "' with QoS " + str(msg.qos))
-   
-        
         
 
 if __name__ == "__main__":
