@@ -145,7 +145,8 @@ class CameraMonitor(QMainWindow):
         self.device_modules = {}
         self.sub_api = {
             "flame/avsim/cam/record_start" : self.api_start_record,
-            "flame/avsim/cam/record_stop" : self.api_stop_record
+            "flame/avsim/cam/record_stop" : self.api_stop_record,
+            "flame/avsim/mapi_request_active" : self.mapi_request_api
         }
         
         self.mq_client = mqtt.Client(client_id="flame-avsim-cam",transport='tcp',protocol=mqtt.MQTTv311, clean_session=True)
@@ -166,6 +167,10 @@ class CameraMonitor(QMainWindow):
             else:
                 btn = self.findChild(QPushButton, btn_camera_open[id])
                 btn.clicked.connect(lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection"))
+    
+    # message api for requesting active
+    def mapi_request_api(self, payload):
+        pass
                 
     # message-based api
     def api_start_record(self):
