@@ -17,6 +17,7 @@ import timeit
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import csv
+import argparse
 
 
 WORKING_PATH = pathlib.Path(__file__).parent
@@ -230,6 +231,14 @@ class CameraMonitor(QMainWindow):
         
 
 if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--broker', nargs='?', required=False, help="Broker Address")
+    args = parser.parse_args()
+
+    broker_address = "127.0.0.1"
+    if args.broker is not None:
+        broker_address = args.broker
     
     app = QApplication(sys.argv)
     window = CameraMonitor()
