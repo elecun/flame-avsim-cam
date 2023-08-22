@@ -210,11 +210,29 @@
      <height>24</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuControl">
+    <property name="title">
+     <string>Control</string>
+    </property>
+    <addaction name="actionStart_Recording"/>
+    <addaction name="actionStop_Recording"/>
+   </widget>
+   <addaction name="menuControl"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionStart_Recording">
+   <property name="text">
+    <string>Start Video Recording</string>
+   </property>
+  </action>
+  <action name="actionStop_Recording">
+   <property name="text">
+    <string>Stop Video Recording</string>
    </property>
   </action>
  </widget>
