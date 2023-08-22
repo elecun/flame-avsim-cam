@@ -108,8 +108,9 @@ class CameraModule(QThread):
     
     def stop_recording(self):
         if self.dev:
-            self.record_start = False
-            self.video_out.release()
+            if self.record_start:
+                self.video_out.release()
+                self.record_start = False
             
         
     def start_recording(self):
@@ -174,26 +175,30 @@ class CameraMonitor(QMainWindow):
         self.mq_client.on_disconnect = self.on_mqtt_disconnect
         self.mq_client.connect_async("127.0.0.1",port=1883,keepalive=60)
         self.mq_client.loop_start()
-    
-    # start recording selected
-    def on_select_start_recording(self):
-        self.mapi_record_start()
-    
-    def on_select_stop_recording(self):
-        self.mapi_record_stop()
-
-                
-    # message-based api
-    def mapi_record_start(self, payload):
+        
+    def _api_record_start(self):
         for camera in self.device_modules.values():
             camera.start_recording()
         self.show_on_statusbar("Start Recording...")
-            
-    def mapi_record_stop(self, payload):
+        
+    def _api_record_stop(self):
         for camera in self.device_modules.values():
             camera.stop_recording()
         self.show_on_statusbar("Stopped Recording...")
-        
+    
+    # start recording selected
+    def on_select_start_recording(self):
+        self._api_record_start()
+    
+    def on_select_stop_recording(self):
+        self._api_record_stop()
+                
+    # message-based api
+    def mapi_record_start(self, payload):
+        self._api_record_start()
+            
+    def mapi_record_stop(self, payload):
+        self._api_record_stop()
                 
     # show message on status bar
     def show_on_statusbar(self, text):
