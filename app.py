@@ -177,10 +177,10 @@ class CameraMonitor(QMainWindow):
     
     # start recording selected
     def on_select_start_recording(self):
-        self.api_start_record()
+        self.mapi_record_start()
     
     def on_select_stop_recording(self):
-        self.api_stop_record()
+        self.mapi_record_stop()
 
                 
     # message-based api
