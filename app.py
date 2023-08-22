@@ -221,7 +221,7 @@ class CameraMonitor(QMainWindow):
             self.mq_client.publish(mqtt_topic_manager, json.dumps(msg), 0)
         else:
             self.show_on_statusbar("Notified")
-    
+    ™
     # MQTT callbacks
     def on_mqtt_connect(self, mqttc, obj, flags, rc):
         self.mapi_notify_active()
