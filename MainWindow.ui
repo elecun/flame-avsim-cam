@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2579</width>
-    <height>455</height>
+    <width>1293</width>
+    <height>880</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,8 +22,8 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>642</width>
-      <height>362</height>
+      <width>640</width>
+      <height>360</height>
      </rect>
     </property>
     <property name="styleSheet">
@@ -36,46 +36,17 @@
      <enum>QFrame::Raised</enum>
     </property>
    </widget>
-   <widget class="QLabel" name="window_camera_1">
-    <property name="geometry">
-     <rect>
-      <x>1</x>
-      <y>1</y>
-      <width>640</width>
-      <height>360</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Camera #1</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
-   <widget class="QFrame" name="frame_camera_2">
-    <property name="geometry">
-     <rect>
-      <x>643</x>
-      <y>0</y>
-      <width>642</width>
-      <height>362</height>
-     </rect>
-    </property>
-    <property name="frameShape">
-     <enum>QFrame::StyledPanel</enum>
-    </property>
-    <property name="frameShadow">
-     <enum>QFrame::Raised</enum>
-    </property>
-   </widget>
    <widget class="QLabel" name="window_camera_2">
     <property name="geometry">
      <rect>
-      <x>643</x>
-      <y>1</y>
+      <x>650</x>
+      <y>0</y>
       <width>640</width>
       <height>360</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(0, 0, 0);</string>
     </property>
     <property name="text">
      <string>Camera #2</string>
@@ -84,30 +55,17 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QFrame" name="frame_camera_3">
-    <property name="geometry">
-     <rect>
-      <x>1285</x>
-      <y>0</y>
-      <width>642</width>
-      <height>362</height>
-     </rect>
-    </property>
-    <property name="frameShape">
-     <enum>QFrame::StyledPanel</enum>
-    </property>
-    <property name="frameShadow">
-     <enum>QFrame::Raised</enum>
-    </property>
-   </widget>
    <widget class="QLabel" name="window_camera_3">
     <property name="geometry">
      <rect>
-      <x>1286</x>
-      <y>0</y>
+      <x>0</x>
+      <y>420</y>
       <width>640</width>
       <height>360</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(0, 0, 0);</string>
     </property>
     <property name="text">
      <string>Camera #3</string>
@@ -116,30 +74,17 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QFrame" name="frame_camera_4">
-    <property name="geometry">
-     <rect>
-      <x>1927</x>
-      <y>0</y>
-      <width>642</width>
-      <height>362</height>
-     </rect>
-    </property>
-    <property name="frameShape">
-     <enum>QFrame::StyledPanel</enum>
-    </property>
-    <property name="frameShadow">
-     <enum>QFrame::Raised</enum>
-    </property>
-   </widget>
    <widget class="QLabel" name="window_camera_4">
     <property name="geometry">
      <rect>
-      <x>1927</x>
-      <y>0</y>
+      <x>650</x>
+      <y>420</y>
       <width>640</width>
       <height>360</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(0, 0, 0);</string>
     </property>
     <property name="text">
      <string>Camera #4</string>
@@ -164,7 +109,7 @@
    <widget class="QPushButton" name="btn_camera_open_2">
     <property name="geometry">
      <rect>
-      <x>1184</x>
+      <x>1190</x>
       <y>370</y>
       <width>100</width>
       <height>30</height>
@@ -177,8 +122,8 @@
    <widget class="QPushButton" name="btn_camera_open_3">
     <property name="geometry">
      <rect>
-      <x>1826</x>
-      <y>370</y>
+      <x>540</x>
+      <y>790</y>
       <width>100</width>
       <height>30</height>
      </rect>
@@ -190,8 +135,8 @@
    <widget class="QPushButton" name="btn_camera_open_4">
     <property name="geometry">
      <rect>
-      <x>2468</x>
-      <y>370</y>
+      <x>1190</x>
+      <y>790</y>
       <width>100</width>
       <height>30</height>
      </rect>
@@ -206,8 +151,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>2579</width>
-     <height>24</height>
+     <width>1293</width>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuControl">
