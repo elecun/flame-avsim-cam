@@ -33,10 +33,6 @@ camera_windows = {camera_dev_ids[0]:"window_camera_1",
                   camera_dev_ids[1]:"window_camera_2", 
                   camera_dev_ids[2]:"window_camera_3", 
                   camera_dev_ids[3]:"window_camera_4"}
-btn_camera_open = {camera_dev_ids[0]:"btn_camera_open_1", 
-                  camera_dev_ids[1]:"btn_camera_open_2", 
-                  camera_dev_ids[2]:"btn_camera_open_3", 
-                  camera_dev_ids[3]:"btn_camera_open_4"}
 
 # for message APIs
 mqtt_topic_manager = "flame/avsim/manager"
@@ -181,11 +177,9 @@ class CameraMonitor(QMainWindow):
             if camera.open():
                 self.opened_camera[id] = camera
                 self.opened_camera[id].image_frame_slot.connect(self.update_frame)
-                btn = self.findChild(QPushButton, btn_camera_open[id])
-                btn.clicked.connect(self.opened_camera[id].begin)
             else:
-                btn = self.findChild(QPushButton, btn_camera_open[id])
-                btn.clicked.connect(lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection"))
+                
+                lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection")
 
          # for mqtt connection
         self.mq_client = mqtt.Client(client_id=APP_NAME,transport='tcp',protocol=mqtt.MQTTv311, clean_session=True)
@@ -214,17 +208,19 @@ class CameraMonitor(QMainWindow):
             camera.stop_recording()
         self.show_on_statusbar("Stopped Recording...")
     
-    # start recording selected
+    # on_select event for starting record
     def on_select_start_recording(self):
         self._api_record_start()
     
+    # on_select event for stopping record
     def on_select_stop_recording(self):
         self._api_record_stop()
                 
-    # message-based api
+    # mapi : record start
     def mapi_record_start(self, payload):
         self._api_record_start()
-            
+
+    # mapi : record stop
     def mapi_record_stop(self, payload):
         self._api_record_stop()
                 
@@ -255,7 +251,7 @@ class CameraMonitor(QMainWindow):
         else:
             self.show_on_statusbar("Notified")
     
-    # MQTT callbacks
+    # mqtt connection callback function
     def on_mqtt_connect(self, mqttc, obj, flags, rc):
         self.mapi_notify_active()
         
@@ -264,10 +260,12 @@ class CameraMonitor(QMainWindow):
             self.mq_client.subscribe(topic, 0)
         
         self.show_on_statusbar("Connected to Broker({})".format(str(rc)))
-        
+    
+    # mqtt disconnection callback function
     def on_mqtt_disconnect(self, mqttc, userdata, rc):
         self.show_on_statusbar("Disconnected to Broker({})".format(str(rc)))
-        
+    
+    # mqtt message receive callback function
     def on_mqtt_message(self, mqttc, userdata, msg):
         mapi = str(msg.topic)
         
