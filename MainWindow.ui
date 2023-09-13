@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1293</width>
-    <height>880</height>
+    <height>784</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -40,7 +40,7 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>420</y>
+      <y>370</y>
       <width>640</width>
       <height>360</height>
      </rect>
@@ -59,7 +59,7 @@
     <property name="geometry">
      <rect>
       <x>650</x>
-      <y>420</y>
+      <y>370</y>
       <width>640</width>
       <height>360</height>
      </rect>
@@ -72,58 +72,6 @@
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="btn_camera_open_1">
-    <property name="geometry">
-     <rect>
-      <x>540</x>
-      <y>370</y>
-      <width>100</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Open</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="btn_camera_open_2">
-    <property name="geometry">
-     <rect>
-      <x>1190</x>
-      <y>370</y>
-      <width>100</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Open</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="btn_camera_open_3">
-    <property name="geometry">
-     <rect>
-      <x>540</x>
-      <y>790</y>
-      <width>100</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Open</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="btn_camera_open_4">
-    <property name="geometry">
-     <rect>
-      <x>1190</x>
-      <y>790</y>
-      <width>100</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Open</string>
     </property>
    </widget>
    <widget class="QLabel" name="window_camera_1">
