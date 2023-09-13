@@ -1,10 +1,9 @@
 '''
- In-Cabin Camera Monitoring and Recorder (with Qt6)
+ In-Cabin Camera Monitoring and Video Recorder (with Qt6 GUI)
  @author Byunghun Hwang<bh.hwang@iae.re.kr>
 '''
 
 import sys, os
-import typing
 from PyQt6 import QtGui
 import cv2
 import pathlib
@@ -16,121 +15,141 @@ from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal
 import timeit
 import paho.mqtt.client as mqtt
 from datetime import datetime
-import csv
 import argparse
 
-
+# pre-defined options
 WORKING_PATH = pathlib.Path(__file__).parent
 APP_UI = WORKING_PATH / "MainWindow.ui"
-APP_NAME = "avsim-cam" # application name
+APP_NAME = "avsim-cam"
 VIDEO_OUT_DIR = WORKING_PATH / "video"
+VIDEO_FILE_EXT = "avi"
+CAMERA_RECORD_FPS = 30
+CAMERA_RECORD_WIDTH = 1920
+CAMERA_RECORD_HEIGHT = 1080
 
-camera_ids = [0, 2, 4, 6]
-camera_windows = {camera_ids[0]:"window_camera_1", 
-                  camera_ids[1]:"window_camera_2", 
-                  camera_ids[2]:"window_camera_3", 
-                  camera_ids[3]:"window_camera_4"}
-btn_camera_open = {camera_ids[0]:"btn_camera_open_1", 
-                  camera_ids[1]:"btn_camera_open_2", 
-                  camera_ids[2]:"btn_camera_open_3", 
-                  camera_ids[3]:"btn_camera_open_4"}
+# camera interfaces for GUI
+camera_dev_ids = [0, 2, 4, 6] # ready to connect
+camera_windows = {camera_dev_ids[0]:"window_camera_1", 
+                  camera_dev_ids[1]:"window_camera_2", 
+                  camera_dev_ids[2]:"window_camera_3", 
+                  camera_dev_ids[3]:"window_camera_4"}
+btn_camera_open = {camera_dev_ids[0]:"btn_camera_open_1", 
+                  camera_dev_ids[1]:"btn_camera_open_2", 
+                  camera_dev_ids[2]:"btn_camera_open_3", 
+                  camera_dev_ids[3]:"btn_camera_open_4"}
+
+# for message APIs
 mqtt_topic_manager = "flame/avsim/manager"
-_def_record_fps = 30
-_def_record_width = 1920
-_def_record_height = 1080
+
 
 '''
-camera module with thread
+camera controller class
 '''
-class CameraModule(QThread):
-    image_frame = pyqtSignal(QImage)
+class CameraController(QThread):
+    image_frame_slot = pyqtSignal(QImage)
 
     def __init__(self, camera_id):
         super().__init__()
-        self.camera_id = camera_id
-        self.working = False # grabing image
-        self.record_start = False # recording video
-        self.video_out_path = VIDEO_OUT_DIR
 
+        self.camera_id = camera_id # camera id
+        self.recording_start_trigger = False # True means starting
+        self.is_recording = False # video recording status
+        self.video_out_path = VIDEO_OUT_DIR
+        self.grabber = None
+        self.video_writer = None
+
+        self.start_trigger_on = False # trigger for starting 
+
+
+    # open camera device (if open success, return True, otherwise return False)
     def open(self) -> bool:
-        self.dev = cv2.VideoCapture(self.camera_id)
-        self.fourcc = cv2.VideoWriter_fourcc(*'mp4v') # high compression but smaller (file extension : mp4)
-        #self.fourcc = cv2.VideoWriter_fourcc(*'MJPG') # low compression but bigger (file extension : avi)
+        self.grabber = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2) # video capture instance with opencv
         
-        if not self.dev.isOpened():
+        if not self.grabber.isOpened():
             return False
         
-        self.working = True
-        print("connected camera device : {}".format(self.camera_id))
+        print(f"[Info] connected camera device {self.camera_id}")
+
+        self.is_recording = False
         return True
 
+    # recording by thread
     def run(self):
         while True:
             if self.isInterruptionRequested():
+                print(f"camera {self.camera_id} controller worker is interrupted")
                 break
             
-            start_t = timeit.default_timer()
+            t_start = timeit.default_timer()
+            ret, frame = self.grabber.read() # grab
+            t_end = timeit.default_timer()
+            framerate = int(1./(t_end - t_start))
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # warning! it should be converted from BGR to RGB. But each camera IR turns ON, grayscale is able to use. (grayscale is optional)
+
+            # recording if recording status flag is on
+            if self.is_recording:
+                self.video_record(frame)
+
+            # camera monitoring (only for RGB color image)
+            cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate})", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
+            _h, _w, _ch = frame_rgb.shape
+            _bpl = _ch*_w # bytes per line
+            qt_image = QImage(frame_rgb.data, _w, _h, _bpl, QImage.Format.Format_RGB888)
+            self.image_frame_slot.emit(qt_image)
+
+    # video recording process impl.
+    def video_record(self, frame):
+        if self.video_writer != None:
+            self.video_writer.write(frame)
+
+    # create new video writer to save as video file
+    def create_video_writer(self):
+        if self.is_recording:
+            self.release_video_writer()
+
+        record_start_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         
-            ret, frame = self.dev.read()
-            
-            # enable recording
-            if self.record_start:
-                self.video_out.write(frame)
-                
-            if not ret:
-                self.working = False
-                self.dev.release()
-                break
-            
-            #change image to QImage
-            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        self.video_out_path = VIDEO_OUT_DIR / record_start_datetime
+        self.video_out_path.mkdir(parents=True, exist_ok=True)
 
-            # post processing
-            end_t = timeit.default_timer()
-            FPS = int(1./(end_t - start_t ))
-            cv2.putText(rgb_image, "Camera #{}(fps:{})".format(self.camera_id, FPS), (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
+        camera_fps = int(self.grabber.get(cv2.CAP_PROP_FPS))
+        camera_w = int(self.grabber.get(cv2.CAP_PROP_FRAME_WIDTH))
+        camera_h = int(self.grabber.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG') # low compression but bigger (file extension : avi)
 
-            h, w, ch = rgb_image.shape
-            bytes_per_line = ch * w
-            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+        print(f"recording camera({self.camera_id}) info : ({camera_w},{camera_h}@{camera_fps})")
+        self.video_writer = cv2.VideoWriter(str(self.video_out_path/f'cam_{self.camera_id}.{VIDEO_FILE_EXT}'), fourcc, CAMERA_RECORD_FPS, (camera_w, camera_h))
 
-            self.image_frame.emit(qt_image)
-
-    def close(self):
-        if self.dev:
-            self.requestInterruption()
-            if self.record_start:
-                self.video_out.release()
-            self.dev.release()
-            
-    def pause_recording(self):
-        self.record_start = False
-    
-    def stop_recording(self):
-        if self.dev:
-            if self.record_start:
-                self.video_out.release()
-                self.record_start = False
-            
-        
+    # start video recording
     def start_recording(self):
-        if not self.record_start:
-            self.record_start_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            
-            # create path
-            self.video_out_path = VIDEO_OUT_DIR / self.record_start_datetime
-            self.video_out_path.mkdir(parents=True, exist_ok=True)
-                
-            self.camera_fps = self.dev.get(cv2.CAP_PROP_FPS)
-            self.camera_w = int(self.dev.get(cv2.CAP_PROP_FRAME_WIDTH))
-            self.camera_h = int(self.dev.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        if not self.is_recording:
+            self.create_video_writer()
+            self.is_recording = True # working on thread
 
-            print("recording camera({}) info : ({},{}@{})".format(self.camera_id, self.camera_w, self.camera_h, self.camera_fps))
-            self.video_out = cv2.VideoWriter(str(self.video_out_path/'cam_{}.mp4'.format(self.camera_id)), self.fourcc, _def_record_fps, (self.camera_w, self.camera_h))
-            self.record_start = True
+    # stop video recording
+    def stop_recording(self):
+        if self.is_recording:
+            self.is_recording = False
+            #self.release_video_writer()
+
+    # destory the video writer
+    def release_video_writer(self):
+        if self.video_writer:
+            self.video_writer.release()
+
+    # close this camera device
+    def close(self):
+        self.requestInterruption() # to quit for thread
+        self.quit()
+        self.wait(1000)
+
+        self.release_video_writer()
+        self.grabber.release()
+        print(f"camera controller {self.camera_id} is terminated successfully")
     
+    # thread start
     def begin(self):
-        if self.dev.isOpened():
+        if self.grabber.isOpened():
             self.start()
             
     def __str__(self):
@@ -141,11 +160,11 @@ class CameraModule(QThread):
 Main window
 '''
 class CameraMonitor(QMainWindow):
-    def __init__(self):
+    def __init__(self, broker_ip_address):
         super().__init__()
         loadUi(APP_UI, self)
 
-        self.device_modules = {}
+        self.opened_camera = {}
         self.message_api = {
             "flame/avsim/cam/mapi_record_start" : self.mapi_record_start,
             "flame/avsim/cam/mapi_record_stop" : self.mapi_record_stop,
@@ -157,32 +176,41 @@ class CameraMonitor(QMainWindow):
         self.actionStop_Recording.triggered.connect(self.on_select_stop_recording)
 
         # for manual load
-        for id in camera_ids:
-            camera = CameraModule(id)
+        for id in camera_dev_ids:
+            camera = CameraController(id)
             if camera.open():
-                self.device_modules[id] = camera
-                self.device_modules[id].image_frame.connect(self.update_frame)
+                self.opened_camera[id] = camera
+                self.opened_camera[id].image_frame_slot.connect(self.update_frame)
                 btn = self.findChild(QPushButton, btn_camera_open[id])
-                btn.clicked.connect(self.device_modules[id].begin)
+                btn.clicked.connect(self.opened_camera[id].begin)
             else:
                 btn = self.findChild(QPushButton, btn_camera_open[id])
                 btn.clicked.connect(lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection"))
 
          # for mqtt connection
-        self.mq_client = mqtt.Client(client_id="flame-avsim-cam",transport='tcp',protocol=mqtt.MQTTv311, clean_session=True)
+        self.mq_client = mqtt.Client(client_id=APP_NAME,transport='tcp',protocol=mqtt.MQTTv311, clean_session=True)
         self.mq_client.on_connect = self.on_mqtt_connect
         self.mq_client.on_message = self.on_mqtt_message
         self.mq_client.on_disconnect = self.on_mqtt_disconnect
-        self.mq_client.connect_async("127.0.0.1",port=1883,keepalive=60)
+        self.mq_client.connect_async(broker_ip_address, port=1883, keepalive=60)
         self.mq_client.loop_start()
-        
+
+    # camera open after show this GUI
+    def start_monitor(self):
+        for camera in self.opened_camera.values():
+            camera.begin()
+    
+    # internal api for starting record
     def _api_record_start(self):
-        for camera in self.device_modules.values():
+        for camera in self.opened_camera.values():
+            print(f"Recording start...({camera.camera_id})")
             camera.start_recording()
         self.show_on_statusbar("Start Recording...")
-        
+    
+    # internal api for stopping record
     def _api_record_stop(self):
-        for camera in self.device_modules.values():
+        for camera in self.opened_camera.values():
+            print(f"Recording stop...({camera.camera_id})")
             camera.stop_recording()
         self.show_on_statusbar("Stopped Recording...")
     
@@ -214,7 +242,7 @@ class CameraMonitor(QMainWindow):
 
     # close event callback function by user
     def closeEvent(self, a0: QCloseEvent) -> None:
-        for device in self.device_modules.values():
+        for device in self.opened_camera.values():
             device.close()
 
         return super().closeEvent(a0)
@@ -258,17 +286,21 @@ class CameraMonitor(QMainWindow):
             print("MAPI message payload connot be converted : {}".format(str(e)))
         
 
+'''
+ Entry point
+'''
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--broker', nargs='?', required=False, help="Broker Address")
+    parser.add_argument('--broker', nargs='?', required=False, help="Broker IP Address")
     args = parser.parse_args()
 
-    broker_address = "127.0.0.1"
+    broker_ip_address = "127.0.0.1"
     if args.broker is not None:
-        broker_address = args.broker
+        broker_ip_address = args.broker
     
     app = QApplication(sys.argv)
-    window = CameraMonitor()
+    window = CameraMonitor(broker_ip_address=broker_ip_address)
     window.show()
+    window.start_monitor()
     sys.exit(app.exec())

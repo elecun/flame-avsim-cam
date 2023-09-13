@@ -1,4 +1,4 @@
-pyqt6
-PySide6
+PyQt6
 opencv-python
 paho-mqtt
+pyinstaller
