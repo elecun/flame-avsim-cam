@@ -79,19 +79,21 @@ class CameraController(QThread):
             t_start = timeit.default_timer()
             ret, frame = self.grabber.read() # grab
             t_end = timeit.default_timer()
-            framerate = int(1./(t_end - t_start))
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # warning! it should be converted from BGR to RGB. But each camera IR turns ON, grayscale is able to use. (grayscale is optional)
 
-            # recording if recording status flag is on
-            if self.is_recording:
-                self.video_record(frame)
+            if frame is not None:
+                framerate = int(1./(t_end - t_start))
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # warning! it should be converted from BGR to RGB. But each camera IR turns ON, grayscale is able to use. (grayscale is optional)
 
-            # camera monitoring (only for RGB color image)
-            cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate})", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
-            _h, _w, _ch = frame_rgb.shape
-            _bpl = _ch*_w # bytes per line
-            qt_image = QImage(frame_rgb.data, _w, _h, _bpl, QImage.Format.Format_RGB888)
-            self.image_frame_slot.emit(qt_image)
+                # recording if recording status flag is on
+                if self.is_recording:
+                    self.video_record(frame)
+
+                # camera monitoring (only for RGB color image)
+                cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate})", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
+                _h, _w, _ch = frame_rgb.shape
+                _bpl = _ch*_w # bytes per line
+                qt_image = QImage(frame_rgb.data, _w, _h, _bpl, QImage.Format.Format_RGB888)
+                self.image_frame_slot.emit(qt_image)
 
     # video recording process impl.
     def video_record(self, frame):
