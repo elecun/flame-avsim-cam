@@ -100,7 +100,7 @@
      <x>0</x>
      <y>0</y>
      <width>1293</width>
-     <height>23</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuControl">
@@ -109,6 +109,8 @@
     </property>
     <addaction name="actionStart_Recording"/>
     <addaction name="actionStop_Recording"/>
+    <addaction name="separator"/>
+    <addaction name="actionCapture_Image"/>
    </widget>
    <addaction name="menuControl"/>
   </widget>
@@ -126,6 +128,11 @@
   <action name="actionStop_Recording">
    <property name="text">
     <string>Stop Video Recording</string>
+   </property>
+  </action>
+  <action name="actionCapture_Image">
+   <property name="text">
+    <string>Capture Image(*.png)</string>
    </property>
   </action>
  </widget>

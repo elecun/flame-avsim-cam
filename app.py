@@ -50,6 +50,7 @@ class CameraController(QThread):
         self.camera_id = camera_id # camera id
         self.recording_start_trigger = False # True means starting
         self.is_recording = False # video recording status
+        self.is_capturing = False # image capturing status
         self.video_out_path = VIDEO_OUT_DIR
         self.grabber = None
         self.video_writer = None
@@ -87,6 +88,10 @@ class CameraController(QThread):
                 # recording if recording status flag is on
                 if self.is_recording:
                     self.video_record(frame)
+                elif self.is_capturing:
+                    cv2.imwrite(f"{self.camera_id}.png", frame)
+                    print(f"Captured image from {self.camera_id}")
+                    self.is_capturing = False
 
                 # camera monitoring (only for RGB color image)
                 cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate})", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
@@ -129,6 +134,11 @@ class CameraController(QThread):
         if self.is_recording:
             self.is_recording = False
             #self.release_video_writer()
+    
+    # start image capturing        
+    def start_capturing(self):
+        if not self.is_capturing:
+            self.is_capturing = True
 
     # destory the video writer
     def release_video_writer(self):
@@ -172,6 +182,7 @@ class CameraMonitor(QMainWindow):
         # menu
         self.actionStart_Recording.triggered.connect(self.on_select_start_recording)
         self.actionStop_Recording.triggered.connect(self.on_select_stop_recording)
+        self.actionCapture_Image.triggered.connect(self.on_select_capture_image)
 
         # for manual load
         for id in camera_dev_ids:
@@ -209,6 +220,12 @@ class CameraMonitor(QMainWindow):
             print(f"Recording stop...({camera.camera_id})")
             camera.stop_recording()
         self.show_on_statusbar("Stopped Recording...")
+        
+    # capture image
+    def _api_capture_image(self):
+        for camera in self.opened_camera.values():
+            camera.start_capturing()
+        self.show_on_statusbar("Captured image...")
     
     # on_select event for starting record
     def on_select_start_recording(self):
@@ -217,6 +234,10 @@ class CameraMonitor(QMainWindow):
     # on_select event for stopping record
     def on_select_stop_recording(self):
         self._api_record_stop()
+        
+    # on_select event for capturing to image(png)
+    def on_select_capture_image(self):
+        self._api_capture_image()
                 
     # mapi : record start
     def mapi_record_start(self, payload):
