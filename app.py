@@ -16,6 +16,7 @@ import timeit
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import argparse
+import time
 
 # pre-defined options
 WORKING_PATH = pathlib.Path(__file__).parent
@@ -54,6 +55,8 @@ class CameraController(QThread):
         self.video_out_path = VIDEO_OUT_DIR
         self.grabber = None
         self.video_writer = None
+        self.capture_start_time = timeit.default_timer()
+        self.capture_delay = 1 # 1 sec
 
         self.start_trigger_on = False # trigger for starting 
 
@@ -89,9 +92,10 @@ class CameraController(QThread):
                 if self.is_recording:
                     self.video_record(frame)
                 elif self.is_capturing:
-                    cv2.imwrite(f"{self.camera_id}.png", frame)
-                    print(f"Captured image from {self.camera_id}")
-                    self.is_capturing = False
+                    if timeit.default_timer()-self.capture_start_time>self.capture_delay:
+                        cv2.imwrite(f"{self.camera_id}.png", frame)
+                        print(f"Captured image from {self.camera_id}")
+                        self.is_capturing = False
 
                 # camera monitoring (only for RGB color image)
                 cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate})", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
@@ -136,8 +140,10 @@ class CameraController(QThread):
             #self.release_video_writer()
     
     # start image capturing        
-    def start_capturing(self):
+    def start_capturing(self, delay_sec:float=1.0):
         if not self.is_capturing:
+            self.capture_start_time = timeit.default_timer()
+            self.capture_delay = delay_sec
             self.is_capturing = True
 
     # destory the video writer
@@ -223,9 +229,10 @@ class CameraMonitor(QMainWindow):
         
     # capture image
     def _api_capture_image(self):
+        delay = 2.0
         for camera in self.opened_camera.values():
-            camera.start_capturing()
-        self.show_on_statusbar("Captured image...")
+            camera.start_capturing(delay)
+        self.show_on_statusbar(f"Captured image after {delay} second(s)")
     
     # on_select event for starting record
     def on_select_start_recording(self):
