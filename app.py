@@ -229,7 +229,7 @@ class CameraMonitor(QMainWindow):
         
     # capture image
     def _api_capture_image(self):
-        delay = 2.0
+        delay = 15.0
         for camera in self.opened_camera.values():
             camera.start_capturing(delay)
         self.show_on_statusbar(f"Captured image after {delay} second(s)")
