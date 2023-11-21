@@ -11,13 +11,15 @@ import json
 from PyQt6.QtGui import QImage, QPixmap, QCloseEvent
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QMessageBox
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal, pyqtSlot
 import timeit
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import argparse
 import time
 from ultralytics import YOLO
+import math
+import pynvml
 
 # pre-defined options
 WORKING_PATH = pathlib.Path(__file__).parent
@@ -39,6 +41,39 @@ camera_windows = {camera_dev_ids[0]:"window_camera_1",
 # for message APIs
 mqtt_topic_manager = "flame/avsim/manager"
 
+# for gpu usage monitor
+class MachineMonitor(QThread):
+    def __init__(self, time_ms):
+        super().__init__()
+
+        self.time_ms = time_ms
+        self.gpu_handle = []
+        self.time_ms = time_ms
+
+        # for gpu status
+        pynvml.nvmlInit()
+        self.gpu_count = pynvml.nvmlDeviceGetCount()
+        for gpu_id in range(self.gpu_count):
+            self.gpu_handle.append(pynvml.nvmlDeviceGetHandleByIndex(gpu_id))
+
+    def run(self):
+        while True:
+            if self.isInterruptionRequested():
+                break
+
+            for handle in self.gpu_handle:
+                info = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                print(f"GPU:{info.gpu}%, Memory:{info.memory}%")
+
+            QThread.msleep(self.time_ms)
+        
+
+    def close(self):
+        pynvml.nvmlShutdown()
+        self.requestInterruption() # to quit for thread
+        self.quit()
+        self.wait(1000)
+
 
 '''
 camera controller class
@@ -49,7 +84,7 @@ class CameraController(QThread):
     def __init__(self, camera_id):
         super().__init__()
 
-        self.camera_id = camera_id # camera id
+        self.camera_id = camera_id # camera idinfo
         self.recording_start_trigger = False # True means starting
         self.is_recording = False # video recording status
         self.is_capturing = False # image capturing status
@@ -62,9 +97,8 @@ class CameraController(QThread):
         self.start_trigger_on = False # trigger for starting 
 
         # for pose estimation
-        self.hpe_model = YOLO(model="./model/yolov8n-pose.pt")
-    
-        self.hpe_activated = False
+        self.hpe_model = YOLO(model="./model/yolov8s-pose.pt")
+        self.hpe_activated = True
 
 
     # open camera device (if open success, return True, otherwise return False)
@@ -82,23 +116,28 @@ class CameraController(QThread):
     # recording by thread
     def run(self):
         while True:
-            print("capturing.")
             if self.isInterruptionRequested():
                 print(f"camera {self.camera_id} controller worker is interrupted")
                 break
             
             t_start = timeit.default_timer()
             ret, frame = self.grabber.read() # grab
-            t_end = timeit.default_timer()
 
             if frame is not None:
-                framerate = int(1./(t_end - t_start))
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # warning! it should be converted from BGR to RGB. But each camera IR turns ON, grayscale is able to use. (grayscale is optional)
 
                 # performing pose estimation
                 if self.hpe_activated:
-                    results = self.hpe_model.predict(frame_rgb, iou=0.7, conf=0.25)
+                    results = self.hpe_model.predict(frame_rgb, iou=0.7, conf=0.7, verbose=False)
 
+                    # draw key points
+                    for kps in results[0].keypoints.xy.tolist():
+                        for kp in kps:
+                            cv2.circle(frame_rgb, center=(int(kp[0]), int(kp[1])), radius=7, color=(0,255,0), thickness=-1)
+                    
+                    # draw bounding box
+                    # for bbox in results[0].boxes.xyxy.tolist():
+                    #     cv2.rectangle(frame_rgb, pt1=(int(bbox[0]), int(bbox[1])), pt2=(int(bbox[2]), int(bbox[3])), color=(255,0,0), thickness=1)
 
                 # recording if recording status flag is on
                 if self.is_recording:
@@ -110,7 +149,9 @@ class CameraController(QThread):
                         self.is_capturing = False
 
                 # camera monitoring (only for RGB color image)
-                cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate})", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
+                t_end = timeit.default_timer()
+                framerate = int(1./(t_end - t_start))
+                cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate}, processing time:{int(results[0].speed['preprocess']+results[0].speed['inference']+results[0].speed['postprocess'])}ms)", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
                 _h, _w, _ch = frame_rgb.shape
                 _bpl = _ch*_w # bytes per line
                 qt_image = QImage(frame_rgb.data, _w, _h, _bpl, QImage.Format.Format_RGB888)
@@ -165,6 +206,7 @@ class CameraController(QThread):
 
     # close this camera device
     def close(self):
+
         self.requestInterruption() # to quit for thread
         self.quit()
         self.wait(1000)
@@ -191,6 +233,7 @@ class CameraMonitor(QMainWindow):
         loadUi(APP_UI, self)
 
         self.opened_camera = {}
+        self.machine_monitor = None
         self.message_api = {
             "flame/avsim/cam/mapi_record_start" : self.mapi_record_start,
             "flame/avsim/cam/mapi_record_stop" : self.mapi_record_stop,
@@ -201,10 +244,11 @@ class CameraMonitor(QMainWindow):
         self.actionStart_Recording.triggered.connect(self.on_select_start_recording)
         self.actionStop_Recording.triggered.connect(self.on_select_stop_recording)
         self.actionCapture_Image.triggered.connect(self.on_select_capture_image)
-        # self.check_hpe_update_cam1.stateChanged.connect(self.on_check_hpe_update_cam1)
-        # self.check_hpe_update_cam2.stateChanged.connect(self.on_check_hpe_update_cam2)
-        # self.check_hpe_update_cam3.stateChanged.connect(self.on_check_hpe_update_cam3)
-        # self.check_hpe_update_cam4.stateChanged.connect(self.on_check_hpe_update_cam4)
+
+        self.check_hpe_update_cam1.stateChanged.connect(self.on_check_hpe_update_cam1)
+        self.check_hpe_update_cam2.stateChanged.connect(self.on_check_hpe_update_cam2)
+        self.check_hpe_update_cam3.stateChanged.connect(self.on_check_hpe_update_cam3)
+        self.check_hpe_update_cam4.stateChanged.connect(self.on_check_hpe_update_cam4)
 
         # for manual load
         for id in camera_dev_ids:
@@ -215,7 +259,11 @@ class CameraMonitor(QMainWindow):
             else:
                 lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection")
 
-         # for mqtt connection
+        # for machine status
+        self.machine_monitor = MachineMonitor(1000)
+        self.machine_monitor.start()
+
+        # for mqtt connection
         self.mq_client = mqtt.Client(client_id=APP_NAME,transport='tcp',protocol=mqtt.MQTTv311, clean_session=True)
         self.mq_client.on_connect = self.on_mqtt_connect
         self.mq_client.on_message = self.on_mqtt_message
@@ -253,9 +301,9 @@ class CameraMonitor(QMainWindow):
     def on_check_hpe_update_cam1(self, state):
         self.show_on_statusbar("Activating HPE Update for CAM1")
         if state==2: # checked
-            pass
+            print("checked")
         else: # unchecked
-            pass
+            print("unchecked")
 
     # human pose estimation results updating on CAM2 display
     def on_check_hpe_update_cam2(self, state):
@@ -318,6 +366,7 @@ class CameraMonitor(QMainWindow):
         for device in self.opened_camera.values():
             device.close()
 
+        self.machine_monitor.close()
         return super().closeEvent(a0)
     
     # notification
