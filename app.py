@@ -192,11 +192,7 @@ class CameraMonitor(QMainWindow):
 
         # for manual load
         for id in camera_dev_ids:
-            camera = CameraController(id)
-            if camera.open():
-                self.opened_camera[id] = camera
-                self.opened_camera[id].image_frame_slot.connect(self.update_frame)
-            else:
+    
                 
                 lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection")
 
