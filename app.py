@@ -17,10 +17,11 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 import argparse
 import time
+from ultralytics import YOLO
 
 # pre-defined options
 WORKING_PATH = pathlib.Path(__file__).parent
-APP_UI = WORKING_PATH / "MainWindow.ui"
+APP_UI = WORKING_PATH / "gui.ui"
 APP_NAME = "avsim-cam"
 VIDEO_OUT_DIR = WORKING_PATH / "video"
 VIDEO_FILE_EXT = "avi"
@@ -60,6 +61,11 @@ class CameraController(QThread):
 
         self.start_trigger_on = False # trigger for starting 
 
+        # for pose estimation
+        self.hpe_model = YOLO(model="./model/yolov8n-pose.pt")
+    
+        self.hpe_activated = False
+
 
     # open camera device (if open success, return True, otherwise return False)
     def open(self) -> bool:
@@ -76,6 +82,7 @@ class CameraController(QThread):
     # recording by thread
     def run(self):
         while True:
+            print("capturing.")
             if self.isInterruptionRequested():
                 print(f"camera {self.camera_id} controller worker is interrupted")
                 break
@@ -87,6 +94,11 @@ class CameraController(QThread):
             if frame is not None:
                 framerate = int(1./(t_end - t_start))
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # warning! it should be converted from BGR to RGB. But each camera IR turns ON, grayscale is able to use. (grayscale is optional)
+
+                # performing pose estimation
+                if self.hpe_activated:
+                    results = self.hpe_model.predict(frame_rgb, iou=0.7, conf=0.25)
+
 
                 # recording if recording status flag is on
                 if self.is_recording:
@@ -189,11 +201,18 @@ class CameraMonitor(QMainWindow):
         self.actionStart_Recording.triggered.connect(self.on_select_start_recording)
         self.actionStop_Recording.triggered.connect(self.on_select_stop_recording)
         self.actionCapture_Image.triggered.connect(self.on_select_capture_image)
+        # self.check_hpe_update_cam1.stateChanged.connect(self.on_check_hpe_update_cam1)
+        # self.check_hpe_update_cam2.stateChanged.connect(self.on_check_hpe_update_cam2)
+        # self.check_hpe_update_cam3.stateChanged.connect(self.on_check_hpe_update_cam3)
+        # self.check_hpe_update_cam4.stateChanged.connect(self.on_check_hpe_update_cam4)
 
         # for manual load
         for id in camera_dev_ids:
-    
-                
+            camera = CameraController(id)
+            if camera.open():
+                self.opened_camera[id] = camera
+                self.opened_camera[id].image_frame_slot.connect(self.update_frame)
+            else:
                 lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection")
 
          # for mqtt connection
@@ -229,6 +248,38 @@ class CameraMonitor(QMainWindow):
         for camera in self.opened_camera.values():
             camera.start_capturing(delay)
         self.show_on_statusbar(f"Captured image after {delay} second(s)")
+
+    # human pose estimation results updating on CAM1 display
+    def on_check_hpe_update_cam1(self, state):
+        self.show_on_statusbar("Activating HPE Update for CAM1")
+        if state==2: # checked
+            pass
+        else: # unchecked
+            pass
+
+    # human pose estimation results updating on CAM2 display
+    def on_check_hpe_update_cam2(self, state):
+        self.show_on_statusbar("Activating HPE Update for CAM2")
+        if state==2: # checked
+            pass
+        else: # unchecked
+            pass
+
+    # human pose estimation results updating on CAM3 display
+    def on_check_hpe_update_cam3(self, state):
+        self.show_on_statusbar("Activating HPE Update for CAM3")
+        if state==2: # checked
+            pass
+        else: # unchecked
+            pass
+
+    # human pose estimation results updating on CAM4 display
+    def on_check_hpe_update_cam4(self, state):
+        self.show_on_statusbar("Activating HPE Update for CAM4")
+        if state==2: # checked
+            pass
+        else: # unchecked
+            pass
     
     # on_select event for starting record
     def on_select_start_recording(self):
