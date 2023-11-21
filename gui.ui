@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1293</width>
-    <height>824</height>
+    <height>848</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -40,7 +40,7 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>390</y>
+      <y>400</y>
       <width>640</width>
       <height>360</height>
      </rect>
@@ -59,7 +59,7 @@
     <property name="geometry">
      <rect>
       <x>650</x>
-      <y>390</y>
+      <y>400</y>
       <width>640</width>
       <height>360</height>
      </rect>
@@ -97,7 +97,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>360</y>
+      <y>370</y>
       <width>191</width>
       <height>20</height>
      </rect>
@@ -109,8 +109,8 @@
    <widget class="QCheckBox" name="check_hpe_update_cam2">
     <property name="geometry">
      <rect>
-      <x>650</x>
-      <y>360</y>
+      <x>660</x>
+      <y>370</y>
       <width>151</width>
       <height>20</height>
      </rect>
@@ -122,8 +122,8 @@
    <widget class="QCheckBox" name="check_hpe_update_cam3">
     <property name="geometry">
      <rect>
-      <x>0</x>
-      <y>750</y>
+      <x>10</x>
+      <y>770</y>
       <width>151</width>
       <height>20</height>
      </rect>
@@ -135,8 +135,8 @@
    <widget class="QCheckBox" name="check_hpe_update_cam4">
     <property name="geometry">
      <rect>
-      <x>650</x>
-      <y>750</y>
+      <x>660</x>
+      <y>770</y>
       <width>131</width>
       <height>20</height>
      </rect>
