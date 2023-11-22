@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1293</width>
-    <height>848</height>
+    <width>1468</width>
+    <height>807</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Camera Monitor &amp; Recorder</string>
+   <string>In-Cabin Camera Monitor &amp; Data Extractor</string>
   </property>
   <property name="styleSheet">
    <string notr="true"/>
@@ -40,7 +40,7 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>400</y>
+      <y>370</y>
       <width>640</width>
       <height>360</height>
      </rect>
@@ -59,7 +59,7 @@
     <property name="geometry">
      <rect>
       <x>650</x>
-      <y>400</y>
+      <y>370</y>
       <width>640</width>
       <height>360</height>
      </rect>
@@ -93,57 +93,70 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QCheckBox" name="check_hpe_update_cam1">
+   <widget class="QGroupBox" name="groupBox">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>370</y>
-      <width>191</width>
-      <height>20</height>
+      <x>1300</x>
+      <y>0</y>
+      <width>161</width>
+      <height>141</height>
      </rect>
     </property>
-    <property name="text">
-     <string>HPE Update</string>
+    <property name="title">
+     <string>System Status</string>
     </property>
-   </widget>
-   <widget class="QCheckBox" name="check_hpe_update_cam2">
-    <property name="geometry">
-     <rect>
-      <x>660</x>
-      <y>370</y>
-      <width>151</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>HPE Update</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="check_hpe_update_cam3">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>770</y>
-      <width>151</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>HPE Update</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="check_hpe_update_cam4">
-    <property name="geometry">
-     <rect>
-      <x>660</x>
-      <y>770</y>
-      <width>131</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>HPE Update</string>
-    </property>
+    <widget class="QProgressBar" name="progress_gpu_usage">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>50</y>
+       <width>141</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="value">
+      <number>24</number>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>101</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>GPU-0 Usage</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_2">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>80</y>
+       <width>131</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>GPU-0 Mem. Usage</string>
+     </property>
+    </widget>
+    <widget class="QProgressBar" name="progress_gpu_mem_usage">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>100</y>
+       <width>141</width>
+       <height>23</height>
+      </rect>
+     </property>
+     <property name="value">
+      <number>24</number>
+     </property>
+    </widget>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -151,27 +164,50 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1293</width>
-     <height>24</height>
+     <width>1468</width>
+     <height>43</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuControl">
     <property name="title">
-     <string>Control</string>
+     <string>Capture</string>
     </property>
     <addaction name="actionStart_Recording"/>
     <addaction name="actionStop_Recording"/>
     <addaction name="separator"/>
     <addaction name="actionCapture_Image"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHPE">
+    <property name="title">
+     <string>Process</string>
+    </property>
+    <widget class="QMenu" name="menuHPE_Model">
+     <property name="title">
+      <string>HPE Model</string>
+     </property>
+     <addaction name="actionYOLOv8n_pose"/>
+     <addaction name="actionYOLOv8s_pose"/>
+     <addaction name="actionYOLOv8m_pose"/>
+     <addaction name="actionYOLOv8l_pose"/>
+     <addaction name="actionYOLOv8x_pose"/>
+    </widget>
+    <addaction name="menuHPE_Model"/>
+    <addaction name="separator"/>
+    <addaction name="actionShow_Keypoints"/>
+   </widget>
+   <widget class="QMenu" name="menuCamera">
+    <property name="title">
+     <string>Camera</string>
+    </property>
+    <addaction name="actionConnect_All"/>
    </widget>
    <addaction name="menuControl"/>
+   <addaction name="menuHPE"/>
+   <addaction name="menuCamera"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionExit">
-   <property name="text">
-    <string>Exit</string>
-   </property>
-  </action>
   <action name="actionStart_Recording">
    <property name="text">
     <string>Start Video Recording</string>
@@ -185,6 +221,64 @@
   <action name="actionCapture_Image">
    <property name="text">
     <string>Capture Image(*.png)</string>
+   </property>
+  </action>
+  <action name="actionShow_Keypoints">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Keypoints</string>
+   </property>
+  </action>
+  <action name="actionYOLOv8n_pose">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>YOLOv8n-pose</string>
+   </property>
+  </action>
+  <action name="actionYOLOv8s_pose">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>YOLOv8s-pose</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="icon">
+    <iconset theme="application-exit"/>
+   </property>
+   <property name="text">
+    <string>Exit</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+X</string>
+   </property>
+  </action>
+  <action name="actionYOLOv8m_pose">
+   <property name="text">
+    <string>YOLOv8m-pose</string>
+   </property>
+  </action>
+  <action name="actionYOLOv8l_pose">
+   <property name="text">
+    <string>YOLOv8l-pose</string>
+   </property>
+  </action>
+  <action name="actionYOLOv8x_pose">
+   <property name="text">
+    <string>YOLOv8x-pose</string>
+   </property>
+  </action>
+  <action name="actionConnect_All">
+   <property name="text">
+    <string>Connect All</string>
    </property>
   </action>
  </widget>
