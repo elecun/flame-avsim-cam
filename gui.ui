@@ -184,7 +184,7 @@
     <addaction name="actionStopDataRecording"/>
     <addaction name="separator"/>
     <addaction name="actionCapture_Image"/>
-    <addaction name="actionCapture_Image_with_Keypoints_png"/>
+    <addaction name="actionCapture_Image_with_Keypoints"/>
     <addaction name="menuCapture_Image_after_time_delay_png"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
@@ -291,7 +291,7 @@
     <string>Connect All</string>
    </property>
   </action>
-  <action name="actionCapture_Image_with_Keypoints_png">
+  <action name="actionCapture_Image_with_Keypoints">
    <property name="text">
     <string>Capture Image with Keypoints(*.png)</string>
    </property>
