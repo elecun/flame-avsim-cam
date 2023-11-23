@@ -58,13 +58,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     broker_ip_address = ""
-    parameters = ""
+    configure = {}
     if args.broker is not None:
         broker_ip_address = args.broker
     if args.config is not None:
-        parameters = args.config
+        _config_name = args.config
+        configure = {
+            "camera_ids":[0,2,4,6],
+            "camera_windows_map":{
+                0:"window_camera_1",
+                2:"window_camera_2",
+                4:"window_camera_3",
+                6:"window_camera_4"
+            }
+        }
     
     app = QApplication(sys.argv)
-    window = CameraWindow(broker_ip_address=broker_ip_address)
+    window = CameraWindow(broker_ip_address=broker_ip_address, config=configure)
     window.show()
     sys.exit(app.exec())

@@ -23,6 +23,8 @@ import pynvml
 
 # for gpu usage monitor
 class MachineMonitor(QThread):
+    gpu_monitor_slot = pyqtSignal(dict)
+
     def __init__(self, time_ms):
         super().__init__()
 
@@ -43,11 +45,12 @@ class MachineMonitor(QThread):
 
             for handle in self.gpu_handle:
                 info = pynvml.nvmlDeviceGetUtilizationRates(handle)
-                print(f"GPU:{info.gpu}%, Memory:{info.memory}%")
+                gpu_status = {"gpu_count":int(self.gpu_count), "gpu_usage":int(info.gpu), "gpu_memory_usage":int(info.memory)}
+                self.gpu_monitor_slot.emit(gpu_status)
 
             QThread.msleep(self.time_ms)
         
-
+    # close machine(gpu) resource monitoring class termination
     def close(self):
         pynvml.nvmlShutdown()
         self.requestInterruption() # to quit for thread
