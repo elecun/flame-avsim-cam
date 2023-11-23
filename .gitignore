@@ -162,3 +162,4 @@ model/yolov8l-pose.pt
 model/yolov8m-pose.pt
 model/yolov8x-pose-p6.pt
 model/yolov8x-pose.pt
+*.avi

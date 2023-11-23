@@ -3,22 +3,7 @@ In-cabin monitoring system performance monitor
 @author bh.hwang@iae.re.kr
 '''
 
-import sys, os
-from PyQt6 import QtGui
-import cv2
-import pathlib
-import json
-from PyQt6.QtGui import QImage, QPixmap, QCloseEvent
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QMessageBox
-from PyQt6.uic import loadUi
-from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal, pyqtSlot
-import timeit
-import paho.mqtt.client as mqtt
-from datetime import datetime
-import argparse
-import time
-from ultralytics import YOLO
-import math
+from PyQt6.QtCore import QThread, pyqtSignal
 import pynvml
 
 # for gpu usage monitor

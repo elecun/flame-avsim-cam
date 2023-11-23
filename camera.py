@@ -15,17 +15,16 @@ from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal, pyqtSlot
 import timeit
 import paho.mqtt.client as mqtt
 from datetime import datetime
-import argparse
-import time
+from datetime import datetime
 from ultralytics import YOLO
-import math
-import pynvml
+import csv
+from itertools import chain
 
 # pre-defined options
 WORKING_PATH = pathlib.Path(__file__).parent
 APP_UI = WORKING_PATH / "gui.ui"
 APP_NAME = "avsim-cam"
-VIDEO_OUT_DIR = WORKING_PATH / "video"
+DATA_OUT_DIR = WORKING_PATH / "data"
 VIDEO_FILE_EXT = "avi"
 CAMERA_RECORD_FPS = 30
 CAMERA_RECORD_WIDTH = 1920
@@ -49,9 +48,12 @@ class CameraController(QThread):
         self.recording_start_trigger = False # True means starting
         self.is_recording = False # video recording status
         self.is_capturing = False # image capturing status
-        self.video_out_path = VIDEO_OUT_DIR
+        self.data_out_path = DATA_OUT_DIR
         self.grabber = None
-        self.video_writer = None
+        self.raw_video_writer = None
+        self.processed_video_writer = None
+        self.pose_csvfile = None
+        self.pose_csvfile_writer = None
         self.capture_start_time = timeit.default_timer()
         self.capture_delay = 1 # 1 sec
 
@@ -59,7 +61,7 @@ class CameraController(QThread):
 
         # for pose estimation
         print("Load HPE model...")
-        self.hpe_model = YOLO(model="./model/yolov8s-pose.pt")
+        self.hpe_model = YOLO(model="./model/yolov8x-pose.pt")
         self.hpe_activated = True
 
 
@@ -82,7 +84,7 @@ class CameraController(QThread):
                 print(f"camera {self.camera_id} controller worker is interrupted")
                 break
             
-            t_start = timeit.default_timer()
+            t_start = datetime.now()
             ret, frame = self.grabber.read() # grab
 
             if frame is not None:
@@ -92,18 +94,30 @@ class CameraController(QThread):
                 if self.hpe_activated:
                     results = self.hpe_model.predict(frame_rgb, iou=0.7, conf=0.7, verbose=False)
 
-                    # draw key points
-                    for kps in results[0].keypoints.xy.tolist():
-                        for kp in kps:
-                            cv2.circle(frame_rgb, center=(int(kp[0]), int(kp[1])), radius=7, color=(0,255,0), thickness=-1)
-                    
-                    # draw bounding box
-                    # for bbox in results[0].boxes.xyxy.tolist():
-                    #     cv2.rectangle(frame_rgb, pt1=(int(bbox[0]), int(bbox[1])), pt2=(int(bbox[2]), int(bbox[3])), color=(255,0,0), thickness=1)
+                    # count found
+                    log_bbox = []
+                    log_kps = []
+                    if len(results[0].boxes)==0:
+                        log_bbox = [float('nan') for i in range(4)]
+                        log_kps = [float('nan') for i in range(17*2)]
+                    else:
+                        # draw key points
+                        for kps in results[0].keypoints.xy.tolist(): #for multi-person
+                            for kp in kps:
+                                cv2.circle(frame_rgb, center=(int(kp[0]), int(kp[1])), radius=7, color=(255,0,0), thickness=-1)
+                                log_kps = log_kps + kp
+                        
+                        # draw bounding box
+                        for bbox in results[0].boxes.xyxy.tolist():
+                            # cv2.rectangle(frame_rgb, pt1=(int(bbox[0]), int(bbox[1])), pt2=(int(bbox[2]), int(bbox[3])), color=(255,0,0), thickness=1)
+                            log_bbox = log_bbox + bbox
 
                 # recording if recording status flag is on
                 if self.is_recording:
-                    self.video_record(frame)
+                    self.raw_video_record(frame)
+                    self.processed_video_record(frame_rgb)
+                    logdata = [t_start.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]] + log_kps + log_bbox + [results[0].speed['preprocess'], results[0].speed['inference'], results[0].speed['postprocess']]
+                    self.pose_csvfile_writer.writerow(logdata)
                 elif self.is_capturing:
                     if timeit.default_timer()-self.capture_start_time>self.capture_delay:
                         cv2.imwrite(f"{self.camera_id}.png", frame)
@@ -111,28 +125,35 @@ class CameraController(QThread):
                         self.is_capturing = False
 
                 # camera monitoring (only for RGB color image)
-                t_end = timeit.default_timer()
-                framerate = int(1./(t_end - t_start))
+                t_end = datetime.now()
+                framerate = int(1./(t_end - t_start).total_seconds())
                 cv2.putText(frame_rgb, f"Camera #{self.camera_id}(fps:{framerate}, processing time:{int(results[0].speed['preprocess']+results[0].speed['inference']+results[0].speed['postprocess'])}ms)", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
+                cv2.putText(frame_rgb, t_start.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], (10, 1070), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2, cv2.LINE_AA)
+
                 _h, _w, _ch = frame_rgb.shape
                 _bpl = _ch*_w # bytes per line
                 qt_image = QImage(frame_rgb.data, _w, _h, _bpl, QImage.Format.Format_RGB888)
                 self.image_frame_slot.emit(qt_image)
 
     # video recording process impl.
-    def video_record(self, frame):
-        if self.video_writer != None:
-            self.video_writer.write(frame)
+    def raw_video_record(self, frame):
+        if self.raw_video_writer != None:
+            self.raw_video_writer.write(frame)
+
+    # processed video recording impl.
+    def processed_video_record(self, frame):
+        if self.processed_video_writer != None:
+            self.processed_video_writer.write(frame)
 
     # create new video writer to save as video file
-    def create_video_writer(self):
+    def create_raw_video_writer(self):
         if self.is_recording:
             self.release_video_writer()
 
-        record_start_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        record_start_datetime = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         
-        self.video_out_path = VIDEO_OUT_DIR / record_start_datetime
-        self.video_out_path.mkdir(parents=True, exist_ok=True)
+        self.data_out_path = DATA_OUT_DIR / record_start_datetime
+        self.data_out_path.mkdir(parents=True, exist_ok=True)
 
         camera_fps = int(self.grabber.get(cv2.CAP_PROP_FPS))
         camera_w = int(self.grabber.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -140,19 +161,21 @@ class CameraController(QThread):
         fourcc = cv2.VideoWriter_fourcc(*'MJPG') # low compression but bigger (file extension : avi)
 
         print(f"recording camera({self.camera_id}) info : ({camera_w},{camera_h}@{camera_fps})")
-        self.video_writer = cv2.VideoWriter(str(self.video_out_path/f'cam_{self.camera_id}.{VIDEO_FILE_EXT}'), fourcc, CAMERA_RECORD_FPS, (camera_w, camera_h))
+        self.raw_video_writer = cv2.VideoWriter(str(self.data_out_path/f'cam_{self.camera_id}.{VIDEO_FILE_EXT}'), fourcc, CAMERA_RECORD_FPS, (camera_w, camera_h))
+        self.processed_video_writer = cv2.VideoWriter(str(self.data_out_path/f'proc_cam_{self.camera_id}.{VIDEO_FILE_EXT}'), fourcc, CAMERA_RECORD_FPS, (camera_w, camera_h))
+        self.pose_csvfile = open(self.data_out_path / "pose.csv", mode="a+", newline='')
+        self.pose_csvfile_writer = csv.writer(self.pose_csvfile)
 
     # start video recording
     def start_recording(self):
         if not self.is_recording:
-            self.create_video_writer()
+            self.create_raw_video_writer()
             self.is_recording = True # working on thread
 
     # stop video recording
     def stop_recording(self):
         if self.is_recording:
             self.is_recording = False
-            #self.release_video_writer()
     
     # start image capturing        
     def start_capturing(self, delay_sec:float=1.0):
@@ -163,8 +186,12 @@ class CameraController(QThread):
 
     # destory the video writer
     def release_video_writer(self):
-        if self.video_writer:
-            self.video_writer.release()
+        if self.raw_video_writer:
+            self.raw_video_writer.release()
+
+        if self.processed_video_writer:
+            self.processed_video_writer.release()
+        
 
     # close this camera device
     def close(self):
