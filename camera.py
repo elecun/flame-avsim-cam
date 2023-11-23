@@ -34,13 +34,6 @@ CAMERA_RECORD_HEIGHT = 1080
 
 # camera interfaces for GUI
 camera_dev_ids = [0, 2, 4, 6] # ready to connect
-camera_windows = {camera_dev_ids[0]:"window_camera_1", 
-                  camera_dev_ids[1]:"window_camera_2", 
-                  camera_dev_ids[2]:"window_camera_3", 
-                  camera_dev_ids[3]:"window_camera_4"}
-
-# for message APIs
-mqtt_topic_manager = "flame/avsim/manager"
 
 
 '''
@@ -65,6 +58,7 @@ class CameraController(QThread):
         self.start_trigger_on = False # trigger for starting 
 
         # for pose estimation
+        print("Load HPE model...")
         self.hpe_model = YOLO(model="./model/yolov8s-pose.pt")
         self.hpe_activated = True
 

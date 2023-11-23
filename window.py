@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QMes
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QObject, Qt, QTimer, QThread, pyqtSignal, pyqtSlot
 from camera import CameraController
+import json
 
 # pre-defined options
 WORKING_PATH = pathlib.Path(__file__).parent
@@ -55,19 +56,6 @@ class CameraWindow(QMainWindow):
         self.actionCapture_Image.triggered.connect(self.on_select_capture_image)
         self.actionConnect_All.triggered.connect(self.on_select_connect_all)
 
-        # for manual load
-        for id in camera_dev_ids:
-            camera = CameraController(id)
-            if camera.open():
-                self.opened_camera[id] = camera
-                self.opened_camera[id].image_frame_slot.connect(self.update_frame)
-            else:
-                lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection")
-
-        # for machine status
-        # self.machine_monitor = MachineMonitor(1000)
-        # self.machine_monitor.start()
-
         # for mqtt connection
         self.mq_client = mqtt.Client(client_id=APP_NAME,transport='tcp',protocol=mqtt.MQTTv311, clean_session=True)
         self.mq_client.on_connect = self.on_mqtt_connect
@@ -78,6 +66,15 @@ class CameraWindow(QMainWindow):
 
     # camera open after show this GUI
     def start_monitor(self):
+        # for manual load
+        for id in camera_dev_ids:
+            camera = CameraController(id)
+            if camera.open():
+                self.opened_camera[id] = camera
+                self.opened_camera[id].image_frame_slot.connect(self.update_frame)
+            else:
+                lambda:QMessageBox.critical(self, "No Camera", "No Camera device connection")
+
         for camera in self.opened_camera.values():
             camera.begin()
     
@@ -143,7 +140,9 @@ class CameraWindow(QMainWindow):
         for device in self.opened_camera.values():
             device.close()
 
-        self.machine_monitor.close()
+        if self.machine_monitor!=None:
+            self.machine_monitor.close()
+            
         return super().closeEvent(a0)
     
     # notification
