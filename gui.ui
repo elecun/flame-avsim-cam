@@ -172,10 +172,20 @@
     <property name="title">
      <string>Capture</string>
     </property>
-    <addaction name="actionStart_Recording"/>
-    <addaction name="actionStop_Recording"/>
+    <widget class="QMenu" name="menuCapture_Image_after_time_delay_png">
+     <property name="title">
+      <string>Capture Image after time delay(*.png)</string>
+     </property>
+     <addaction name="actionCaptureAfter10s"/>
+     <addaction name="actionCaptureAfter20s"/>
+     <addaction name="actionCaptureAfter30s"/>
+    </widget>
+    <addaction name="actionStartDataRecording"/>
+    <addaction name="actionStopDataRecording"/>
     <addaction name="separator"/>
     <addaction name="actionCapture_Image"/>
+    <addaction name="actionCapture_Image_with_Keypoints_png"/>
+    <addaction name="menuCapture_Image_after_time_delay_png"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -208,14 +218,14 @@
    <addaction name="menuCamera"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionStart_Recording">
+  <action name="actionStartDataRecording">
    <property name="text">
-    <string>Start Video Recording</string>
+    <string>Start Data Recording</string>
    </property>
   </action>
-  <action name="actionStop_Recording">
+  <action name="actionStopDataRecording">
    <property name="text">
-    <string>Stop Video Recording</string>
+    <string>Stop Data Recording</string>
    </property>
   </action>
   <action name="actionCapture_Image">
@@ -279,6 +289,36 @@
   <action name="actionConnect_All">
    <property name="text">
     <string>Connect All</string>
+   </property>
+  </action>
+  <action name="actionCapture_Image_with_Keypoints_png">
+   <property name="text">
+    <string>Capture Image with Keypoints(*.png)</string>
+   </property>
+  </action>
+  <action name="actionStart_Video_Recording_with_HPE">
+   <property name="text">
+    <string>Start Video Recording with HPE</string>
+   </property>
+  </action>
+  <action name="actionStop_Video_Recording_with_HPE">
+   <property name="text">
+    <string>Stop Video Recording with HPE</string>
+   </property>
+  </action>
+  <action name="actionCaptureAfter10s">
+   <property name="text">
+    <string>10s</string>
+   </property>
+  </action>
+  <action name="actionCaptureAfter20s">
+   <property name="text">
+    <string>20s</string>
+   </property>
+  </action>
+  <action name="actionCaptureAfter30s">
+   <property name="text">
+    <string>30s</string>
    </property>
   </action>
  </widget>
