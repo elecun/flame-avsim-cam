@@ -163,7 +163,7 @@ class CameraController(QThread):
         print(f"recording camera({self.camera_id}) info : ({camera_w},{camera_h}@{camera_fps})")
         self.raw_video_writer = cv2.VideoWriter(str(self.data_out_path/f'cam_{self.camera_id}.{VIDEO_FILE_EXT}'), fourcc, CAMERA_RECORD_FPS, (camera_w, camera_h))
         self.processed_video_writer = cv2.VideoWriter(str(self.data_out_path/f'proc_cam_{self.camera_id}.{VIDEO_FILE_EXT}'), fourcc, CAMERA_RECORD_FPS, (camera_w, camera_h))
-        self.pose_csvfile = open(self.data_out_path / "pose.csv", mode="a+", newline='')
+        self.pose_csvfile = open(self.data_out_path / "keypoints.csv", mode="a+", newline='')
         self.pose_csvfile_writer = csv.writer(self.pose_csvfile)
 
     # start video recording
